@@ -39,7 +39,7 @@ Thuật toán hiệu chuẩn: Sử dụng 11 tham số hiệu chuẩn (AC1–AC6
 //                                     2.Thông số kỹ thuật của BMP 180
 //=====================================================================================================================
 
-🧾 Thông số kỹ thuật chung
+2.1 Thông số kỹ thuật chung
 | Thông số                  | Giá trị                                                       |
 | ------------------------- | ------------------------------------------------------------- |
 | **Nguồn hoạt động (VDD)** | 1.8V đến 3.6V                                                 |
@@ -49,7 +49,7 @@ Thuật toán hiệu chuẩn: Sử dụng 11 tham số hiệu chuẩn (AC1–AC6
 | **Nhiệt độ hoạt động**    | -40°C đến +85°C                                               |
 | **Áp suất hoạt động**     | 300 hPa đến 1100 hPa (tương đương độ cao: +9000 m đến -500 m) |
 
-📏 Độ phân giải và độ chính xác
+2.2 Độ phân giải và độ chính xác
 | Thông số                   | Giá trị              |
 | -------------------------- | -------------------- |
 | **Độ phân giải áp suất**   | 0.01 hPa (1 Pa)      |
@@ -57,7 +57,7 @@ Thuật toán hiệu chuẩn: Sử dụng 11 tham số hiệu chuẩn (AC1–AC6
 | **Độ chính xác nhiệt độ**  | ±1.0 °C              |
 | **Độ phân giải nhiệt độ**  | 0.1 °C               |
 
-⚙️ Tốc độ đo (Oversampling Settings – OSS)
+2.3 Tốc độ đo (Oversampling Settings – OSS)
 | OSS                       | Thời gian chuyển đổi | Độ nhiễu (RMS noise) | Độ phân giải |
 | ------------------------- | -------------------- | -------------------- | ------------ |
 | 0 (Ultra low power)       | \~4.5 ms             | 0.06 hPa (0.5 m)     | 16 bit       |
@@ -65,6 +65,32 @@ Thuật toán hiệu chuẩn: Sử dụng 11 tham số hiệu chuẩn (AC1–AC6
 | 2 (High Resolution)       | \~13.5 ms            | 0.04 hPa (0.3 m)     | 18 bit       |
 | 3 (Ultra High Resolution) | \~25.5 ms            | 0.03 hPa (0.25 m)    | 19 bit       |
 
+2.4 Địa chỉ I2C và thanh ghi:
+   ADDRESS_I2C_BMP180     0x77
+  
+   BMP180_REG_CONTROL     0xF4 //Start measuring pressure or temperature
+  
+   BMP180_REG_RESULT      0xF6
+
+  //Calibration Coefficients
+    //-Pressure
+   BMP180_REG_CAL_AC1     0xAA
+   BMP180_REG_CAL_AC2     0xAC
+   BMP180_REG_CAL_AC3     0xAE
+   BMP180_REG_CAL_AC4     0xB0  //unsigned
+   BMP180_REG_CAL_B1      0xB6
+   BMP180_REG_CAL_B2      0xB8
+    //--Temperature
+   BMP180_REG_CAL_AC5     0xB2 
+   BMP180_REG_CAL_AC6     0xB4
+   BMP180_REG_CAL_MB      0xBA
+   BMP180_REG_CAL_MC      0xBC
+   BMP180_REG_CAL_MD      0xBE
+
+  //Control registers values for different internal oversampling_setting(oss)
+  #define BMP180_REG_TEMPERATURE 0x2E
+  #define BMP180_REG_PRESSURE    0x34  //oss= 0
+    
 
 //=====================================================================================================================  
 //                                     3. Cài đặt & Biên dịch
@@ -86,10 +112,10 @@ Kiểm tra kết nối i2cdetect -y 1 -> Nếu hiện 0x77 thì đẫ kết nố
 
 3.3 Biên dịch Driver BMP 180
 
-B1: Tải cái file bmp180_driver.c bmp180.dts Makefile test.c tại trang Github https://github.com/ThanhTam1805/Driver-BMP180
+B1: Tải  file bmp180_driver.c bmp180.dts Makefile test.c tại trang Github https://github.com/ThanhTam1805/Driver-BMP180
 vào cùng 1 thư mục trên Raspberry Pi
 B2: Mở Terminal chuyển đến thư mục chứa các file đã tải chạy lệnh Make -> sau đó chạy lệnh sudo cp bmp180.dtbo /boot/overlays/ -> chạy lệnh sudo nano /boot/config.txt
-  thêm dòng sau vào file config.txt dtoverlay=bmp180 -> sau đó chạy lệnh sudo reboot
+  thêm dòng sau vào file config.txt thêm ở dòng cuối cùng chỗ [all] là: dtoverlay=bmp180 -> sau đó chạy lệnh sudo reboot
 B3: Mở Terminal chạy lệnh make 
 
 3.4 Cài đặt Driver BMP180 
@@ -112,7 +138,13 @@ B2: Chạy lệnh sudo ./bmp180_test
 //=====================================================================================================================  
 //                                     5. Các hàm cần thiết
 //=====================================================================================================================
-
+      //-----Hàm test: giao tiếp userspace viuws kernel------////
+  fd = open("/dev/bmp180", O_RDWR); // mở driver với chức năng read,write
+  ioctl(fd, IOCTL_READ_TEMP, &temperature); // đọc nhiệt độ 
+  //Đọc áp suất với mode oss= 0; 1; 2;3
+  pressure_data.oss = 0; //vd: mode 0
+  ioctl(fd, IOCTL_READ_PRESSURE, &pressure_data)
+  
 Đoạn mã sử dụng 3 hàm chính dùng để giao tiếp giữ lớp User pasce và Kernel space như:
 *** Hàm open(): dùng để device file
 - Cú pháp:
@@ -177,7 +209,7 @@ oss (độ chính xác) và đọc áp giá trị áp suất cho lớp Kernel.
 
 ### Driver BMP180 version 1.0  được phát triển bởi các tác giả sau:
 - Lê Nguyễn Thành Tâm      22146214
-- Nguyễn Chí Bình
+- Nguyễn Chí Bình          22146084
 - Võ Phước Thắng 
 ### Driver BMP180 sử dụng tài liệu Bosch. Bạn có thể truy cập tại địa chỉ sau: https://cdn-shop.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
 ### Clip demo của Driver bạn có thể truy cập Youtube tại địa chỉ: https://youtu.be/ZMpUF-4gxYI
